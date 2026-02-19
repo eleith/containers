@@ -2,19 +2,48 @@
 set -e
 
 # --- 1. Argument Handling ---
-TARGET="${1:?Usage: dane-verify <hostname> [resolver]}"
-RESOLVER="${2:-system}"
-PORT=25
+INPUT="${1:?Usage: check.sh <hostname>[:port] [-r resolver]}"
+shift
+
+# Split host and port
+if [[ "$INPUT" == *":"* ]]; then
+	TARGET="${INPUT%%:*}"
+	PORT="${INPUT##*:}"
+else
+	TARGET="$INPUT"
+	PORT=25
+fi
+
+RESOLVER="system"
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	-r)
+		RESOLVER="${2:?Error: -r requires a resolver address}"
+		shift 2
+		;;
+	*)
+		echo "ERROR: Unknown option $1"
+		echo "Usage: check.sh <hostname>[:port] [-r resolver]"
+		exit 1
+		;;
+	esac
+done
 
 # --- 2. Fetch DNS ---
 if [[ "$RESOLVER" == "system" ]]; then
-	DNS_FULL=$(dig +adflag +dnssec TLSA "_${PORT}._tcp.${TARGET}")
+	DNS_FULL=$(dig +adflag +dnssec TLSA "_${PORT}._tcp.${TARGET}" 2>&1) || true
 else
-	DNS_FULL=$(dig "@${RESOLVER}" +adflag +dnssec TLSA "_${PORT}._tcp.${TARGET}")
+	DNS_FULL=$(dig "@${RESOLVER}" +adflag +dnssec TLSA "_${PORT}._tcp.${TARGET}" 2>&1) || true
+fi
+
+if [[ -z "$DNS_FULL" ]] || echo "$DNS_FULL" | grep -q "no servers could be reached" || echo "$DNS_FULL" | grep -q "communications error"; then
+	echo "ERROR: DNS query failed for ${TARGET} using resolver ${RESOLVER}"
+	[[ -n "$DNS_FULL" ]] && echo "$DNS_FULL"
+	exit 1
 fi
 
 # Filter for the TLSA record line specifically
-RECORD_LINE=$(echo "$DNS_FULL" | grep -v '^;' | grep -E "\s+IN\s+TLSA\s+" | head -n 1 | tr -d '()"' | tr '\n' ' ')
+RECORD_LINE=$(echo "$DNS_FULL" | grep -v '^;' | grep -E "\s+IN\s+TLSA\s+" | head -n 1 | tr -d '()"' | tr '\n' ' ' || true)
 
 if [[ -z "$RECORD_LINE" ]]; then
 	echo "ERROR: No TLSA record found for _${PORT}._tcp.${TARGET} using resolver ${RESOLVER}"

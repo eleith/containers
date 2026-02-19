@@ -20,13 +20,13 @@ You can run it manually to check a domain:
 ```bash
 docker run --rm \
   ghcr.io/eleith/containers-dane-verify \
-  mail.example.com 8.8.8.8
+  mail.example.com:25 -r 8.8.8.8
 ```
 
 *Arguments:*
 
-* `hostname`: The mail server to check.
-* `resolver` (Optional): The DNS resolver to use (defaults to system).
+* `hostname[:port]`: The mail server to check. Port defaults to 25.
+* `-r resolver` (Optional): The DNS resolver to use (e.g., 1.1.1.1).
 
 ## 📦 Tech Stack
 
