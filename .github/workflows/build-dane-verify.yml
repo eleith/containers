@@ -8,7 +8,6 @@ on:
     paths:
       - "dane-verify/**"
       - ".github/workflows/build-dane-verify.yml"
-  create:
     tags:
       - "dane-verify/v*.*.*"
 

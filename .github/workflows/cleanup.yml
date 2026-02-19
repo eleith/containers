@@ -1,0 +1,31 @@
+name: Container Cleanup
+
+on:
+  schedule:
+    - cron: '30 2 * * 0' # 2:30 AM every Sunday
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        package: [containers-dane-verify, containers-ssh]
+
+    steps:
+      - name: Delete all untagged versions for ${{ matrix.package }}
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ matrix.package }}
+          package-type: 'container'
+          delete-only-untagged-versions: true
+
+      - name: Prune old versions for ${{ matrix.package }}, keeping the last 5
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ matrix.package }}
+          package-type: 'container'
+          min-versions-to-keep: 5
+          ignore-versions: '^(latest)$'
