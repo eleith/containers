@@ -8,7 +8,7 @@ when:
     path:
       include: [".woodpecker/build-dane-verify.yml", "dane-verify/**"]
   - event: tag
-    tag: "dane-verify/v*.*.*"
+    ref: "refs/tags/dane-verify/v*.*.*"
 
 steps:
   extract-semver-tags:
