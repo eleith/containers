@@ -39,9 +39,9 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/containers-dane-verify
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ steps.tag_name.outputs.version }},enable=${{ github.ref_type == 'tag' }}
-            type=raw,value=${{ steps.tag_name.outputs.version }}-major,enable=${{ github.ref_type == 'tag' && contains(steps.tag_name.outputs.version, '.') }}
-            type=raw,value=${{ steps.tag_name.outputs.version }}-minor,enable=${{ github.ref_type == 'tag' && contains(steps.tag_name.outputs.version, '.') }}
+            type=semver,pattern={{version}},value=${{ steps.tag_name.outputs.version }},enable=${{ github.ref_type == 'tag' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag_name.outputs.version }},enable=${{ github.ref_type == 'tag' }}
+            type=semver,pattern={{major}},value=${{ steps.tag_name.outputs.version }},enable=${{ github.ref_type == 'tag' }}
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
