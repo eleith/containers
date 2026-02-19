@@ -9,7 +9,7 @@ on:
       - "dane-verify/**"
       - ".github/workflows/build-dane-verify.yml"
     tags:
-      - "dane-verify/v*.*.*"
+      - "dane-verify/v*"
 
 jobs:
   build:

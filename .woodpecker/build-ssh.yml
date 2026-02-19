@@ -8,7 +8,7 @@ when:
     path:
       include: [".woodpecker/build-ssh.yml", "ssh/**"]
   - event: tag
-    ref: "refs/tags/dane-verify/v*.*.*"
+    ref: "refs/tags/ssh/v*.*.*"
 
 steps:
   extract-semver-tags:

@@ -9,7 +9,7 @@ on:
       - "ssh/**"
       - ".github/workflows/build-ssh.yml"
     tags:
-      - "ssh/v*.*.*"
+      - "ssh/v*"
 
 jobs:
   build:
