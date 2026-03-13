@@ -10,7 +10,7 @@ Mount your `wg0.conf` and provide the target URL:
 ```bash
 docker run --rm \
   --cap-add=NET_ADMIN \
-  --device /dev/net/tun:/dev/net/tun \
+  --sysctl net.ipv4.conf.all.src_valid_mark=1 \
   -v /path/to/your/wg0.conf:/etc/wireguard/wg0.conf \
   wg-verify http://internal-service.example.com
 ```
@@ -26,7 +26,7 @@ Example with a custom expected status:
 ```bash
 docker run --rm \
   --cap-add=NET_ADMIN \
-  --device /dev/net/tun:/dev/net/tun \
+  --sysctl net.ipv4.conf.all.src_valid_mark=1 \
   -v /path/to/your/wg0.conf:/etc/wireguard/wg0.conf \
   wg-verify -s 302 http://internal-service.example.com
 ```
@@ -34,5 +34,5 @@ docker run --rm \
 ## Requirements
 
 - `--cap-add=NET_ADMIN` is required for WireGuard to create the tunnel interface
-- `--device /dev/net/tun:/dev/net/tun` provides access to the TUN device
+- `--sysctl net.ipv4.conf.all.src_valid_mark=1` is required for WireGuard's routing policy rules
 - A valid WireGuard client config must be mounted at `/etc/wireguard/wg0.conf`
