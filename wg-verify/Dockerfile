@@ -4,6 +4,7 @@ RUN apk add --no-cache \
     wireguard-tools \
     curl \
     iproute2 \
+    ip6tables \
     bash
 
 WORKDIR /app
