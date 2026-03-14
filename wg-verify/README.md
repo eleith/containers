@@ -12,7 +12,7 @@ docker run --rm \
   --cap-add=NET_ADMIN \
   --sysctl net.ipv4.conf.all.src_valid_mark=1 \
   -v /path/to/your/wg0.conf:/etc/wireguard/wg0.conf \
-  wg-verify https://internal-service.example.com
+  ghcr.io/eleith/containers-wg-verify https://internal-service.example.com
 ```
 
 ### Options
@@ -30,7 +30,7 @@ docker run --rm \
   --cap-add=NET_ADMIN \
   --sysctl net.ipv4.conf.all.src_valid_mark=1 \
   -v /path/to/your/wg0.conf:/etc/wireguard/wg0.conf \
-  wg-verify -v -s 302 https://internal-service.example.com
+  ghcr.io/eleith/containers-wg-verify -v -s 302 https://internal-service.example.com
 ```
 
 ### DNS
