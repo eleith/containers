@@ -30,7 +30,7 @@ sleep 5
 
 echo "[2/3] Checking for active handshake..."
 # Check if we have a recent handshake (within last 30 seconds)
-HANDSHAKE=$(wg show wg0 latest-handshake | awk '{print $2}')
+HANDSHAKE=$(wg show wg0 latest-handshakes | awk '{print $2}')
 NOW=$(date +%s)
 
 if [ -z "$HANDSHAKE" ] || [ "$HANDSHAKE" -eq 0 ] || [ $((NOW - HANDSHAKE)) -gt 30 ]; then
