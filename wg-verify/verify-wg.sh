@@ -33,27 +33,27 @@ fi
 
 sleep 5
 
-echo "[2/3] Checking for active handshake..."
+echo "[2/3] Checking handshake..."
 HANDSHAKE=$(wg show wg0 latest-handshakes | awk '{print $2}')
 NOW=$(date +%s)
 
 if [ -z "$HANDSHAKE" ] || [ "$HANDSHAKE" -eq 0 ] || [ $((NOW - HANDSHAKE)) -gt 30 ]; then
-    echo "❌ ERROR: No recent handshake detected. Server A might be down or port 51822 is blocked."
+    echo "❌ No recent handshake. Server may be down or port is blocked."
     exit 1
 fi
 echo "✅ Handshake successful."
 
-echo "[3/3] Testing connectivity to $TARGET_URL..."
+echo "[3/3] Requesting $TARGET_URL..."
 WG_IP=$(ip -4 addr show wg0 | awk '/inet / {print $2}' | cut -d/ -f1)
 if $VERBOSE; then
-    echo "  WireGuard IP: $WG_IP"
+    echo "  Source IP: $WG_IP"
 fi
 HTTP_CODE=$(curl --interface "$WG_IP" -s -o /dev/null -w "%{http_code}" -m 10 "$TARGET_URL")
 
 if [ "$HTTP_CODE" -eq "$EXPECTED_HTTP_CODE" ]; then
-    echo "✅ SUCCESS: Internal service reached via VPN (HTTP $HTTP_CODE)."
+    echo "✅ HTTP $HTTP_CODE — passed."
     exit 0
 else
-    echo "❌ FAIL: HTTP $HTTP_CODE (expected $EXPECTED_HTTP_CODE)."
+    echo "❌ HTTP $HTTP_CODE (expected $EXPECTED_HTTP_CODE)."
     exit 1
 fi
