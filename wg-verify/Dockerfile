@@ -7,7 +7,7 @@ RUN apk add --no-cache \
     ip6tables \
     bash && \
     sed -i 's|\[\[ $proto == -4 \]\] && cmd sysctl -q net\.ipv4\.conf\.all\.src_valid_mark=1|[[ $proto == -4 ]] \&\& [[ $(sysctl -n net.ipv4.conf.all.src_valid_mark) != 1 ]] \&\& cmd sysctl -q net.ipv4.conf.all.src_valid_mark=1|' /usr/bin/wg-quick && \
-    ln -sf /bin/true /usr/sbin/resolvconf
+    printf '#!/bin/sh\nexit 0\n' > /usr/sbin/resolvconf && chmod +x /usr/sbin/resolvconf
 
 WORKDIR /app
 
