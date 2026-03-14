@@ -21,6 +21,7 @@ docker run --rm \
 |------|-------------|---------|
 | `-v` | Verbose output (show `wg-quick` commands and source IP) | off |
 | `-s` | Expected HTTP status code | `200` |
+| `-t` | Timeout in seconds, applied separately to handshake and HTTP request | `10` |
 
 Example with verbose output and a custom expected status:
 
