@@ -44,7 +44,11 @@ fi
 echo "✅ Handshake successful."
 
 echo "[3/3] Testing connectivity to $TARGET_URL..."
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 10 "$TARGET_URL")
+WG_IP=$(ip -4 addr show wg0 | awk '/inet / {print $2}' | cut -d/ -f1)
+if $VERBOSE; then
+    echo "  WireGuard IP: $WG_IP"
+fi
+HTTP_CODE=$(curl --interface "$WG_IP" -s -o /dev/null -w "%{http_code}" -m 10 "$TARGET_URL")
 
 if [ "$HTTP_CODE" -eq "$EXPECTED_HTTP_CODE" ]; then
     echo "✅ SUCCESS: Internal service reached via VPN (HTTP $HTTP_CODE)."

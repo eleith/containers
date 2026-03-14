@@ -32,19 +32,11 @@ docker run --rm \
   wg-verify -v -s 302 https://internal-service.example.com
 ```
 
-### DNS resolver
+### DNS
 
-By default the container uses Docker's DNS resolver. To force an external
-resolver (e.g. to ensure public DNS resolution), use Docker's `--dns` flag:
-
-```bash
-docker run --rm \
-  --cap-add=NET_ADMIN \
-  --sysctl net.ipv4.conf.all.src_valid_mark=1 \
-  --dns 8.8.8.8 \
-  -v /path/to/your/wg0.conf:/etc/wireguard/wg0.conf \
-  wg-verify https://internal-service.example.com
-```
+The container uses Docker's DNS to resolve the WireGuard endpoint during
+startup. Once the tunnel is up, it switches to the DNS server specified in your
+`wg0.conf` (the `DNS` setting), matching how real WireGuard clients behave.
 
 ## Requirements
 
