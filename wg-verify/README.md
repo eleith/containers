@@ -1,7 +1,7 @@
 # wg-verify
 
 Verifies a WireGuard VPN tunnel by bringing up the interface, checking for a
-successful handshake, and testing connectivity to an internal URL.
+successful handshake, and testing connectivity to a URL.
 
 ## Usage
 
@@ -12,23 +12,38 @@ docker run --rm \
   --cap-add=NET_ADMIN \
   --sysctl net.ipv4.conf.all.src_valid_mark=1 \
   -v /path/to/your/wg0.conf:/etc/wireguard/wg0.conf \
-  wg-verify http://internal-service.example.com
+  wg-verify https://internal-service.example.com
 ```
 
 ### Options
 
 | Flag | Description | Default |
 |------|-------------|---------|
+| `-v` | Verbose output (show `wg-quick` commands) | off |
 | `-s` | Expected HTTP status code | `200` |
 
-Example with a custom expected status:
+Example with verbose output and a custom expected status:
 
 ```bash
 docker run --rm \
   --cap-add=NET_ADMIN \
   --sysctl net.ipv4.conf.all.src_valid_mark=1 \
   -v /path/to/your/wg0.conf:/etc/wireguard/wg0.conf \
-  wg-verify -s 302 http://internal-service.example.com
+  wg-verify -v -s 302 https://internal-service.example.com
+```
+
+### DNS resolver
+
+By default the container uses Docker's DNS resolver. To force an external
+resolver (e.g. to ensure public DNS resolution), use Docker's `--dns` flag:
+
+```bash
+docker run --rm \
+  --cap-add=NET_ADMIN \
+  --sysctl net.ipv4.conf.all.src_valid_mark=1 \
+  --dns 8.8.8.8 \
+  -v /path/to/your/wg0.conf:/etc/wireguard/wg0.conf \
+  wg-verify https://internal-service.example.com
 ```
 
 ## Requirements
