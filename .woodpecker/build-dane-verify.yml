@@ -11,8 +11,13 @@ when:
     ref: "refs/tags/dane-verify/v*.*.*"
 
 steps:
+  run-tests:
+    image: bats/bats:1.11.0
+    commands:
+      - bats dane-verify/tests/
+
   extract-semver-tags:
-    image: alpine/git:latest
+    image: alpine/git:v2.45.2
     commands:
       - |
         VERSION_FULL="${CI_COMMIT_TAG#dane-verify/v}"
