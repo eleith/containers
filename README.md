@@ -10,7 +10,8 @@ ci and cd.
 - [**ssh**](./ssh): A lightweight alpine image with an SSH client
 - [**wg-verify**](./wg-verify): Verifies a WireGuard VPN tunnel by checking
   handshake status and testing connectivity to an internal URL
-- [**yq**](./yq): A lightweight alpine image with Mike Farah's `yq` (YAML processor) and `bash`
+- [**yq**](./yq): A lightweight image with Mike Farah's `yq` and `bash`
+- [**playwright**](./playwright): playwright + node 26 + Temporal
 
 ## 🚀 Quick Start
 
