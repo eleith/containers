@@ -7,6 +7,8 @@ ci and cd.
 
 - [**dane-verify**](./dane-verify): A specialized tool to monitor a domain's
   DNSSEC and TLSA records
+- [**nvim**](./nvim): Neovim, `lua-language-server`, and `stylua` for
+  linting, formatting, and testing Lua code and nvim plugins
 - [**ssh**](./ssh): A lightweight alpine image with an SSH client
 - [**wg-verify**](./wg-verify): Verifies a WireGuard VPN tunnel by checking
   handshake status and testing connectivity to an internal URL
@@ -19,6 +21,7 @@ Each container lives in its own directory with its own `Dockerfile`. To build th
 
 ```bash
 docker build -t dane-verify ./dane-verify
+docker build -t nvim ./nvim
 docker build -t ssh ./ssh
 docker build -t wg-verify ./wg-verify
 docker build -t yq ./yq

@@ -11,8 +11,15 @@ jobs:
     permissions:
       packages: write
     strategy:
+      fail-fast: false
       matrix:
-        package: [containers-dane-verify, containers-ssh]
+        package:
+          - containers-dane-verify
+          - containers-nvim
+          - containers-playwright
+          - containers-ssh
+          - containers-wg-verify
+          - containers-yq
 
     steps:
       - name: Delete all untagged versions for ${{ matrix.package }}
