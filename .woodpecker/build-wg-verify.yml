@@ -57,8 +57,8 @@ steps:
     when:
       - event: tag
 
-  notify-success:
-    image: deblan/woodpecker-email:3.2.0
+  notify:
+    image: deblan/woodpecker-email:3.3.0
     settings:
       dsn:
         from_secret: woodpecker_email_dsn
@@ -69,23 +69,8 @@ steps:
           from_secret: woodpecker_email_from_name
       recipients:
         from_secret: woodpecker_email_recipient
-      level: success
       recipients_only: true
     when:
-      - status: [success]
-  notify-failure:
-    image: deblan/woodpecker-email:3.2.0
-    settings:
-      dsn:
-        from_secret: woodpecker_email_dsn
-      from:
-        address:
-          from_secret: woodpecker_email_from_address
-        name:
-          from_secret: woodpecker_email_from_name
-      recipients:
-        from_secret: woodpecker_email_recipient
-      level: failure
-      recipients_only: true
-    when:
-      - status: [failure]
+      - event: push
+        branch: main
+        status: [failure, success]
