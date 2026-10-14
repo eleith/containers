@@ -15,6 +15,7 @@ jobs:
       matrix:
         package:
           - containers-dane-verify
+          - containers-hledger
           - containers-nvim
           - containers-playwright
           - containers-ssh
