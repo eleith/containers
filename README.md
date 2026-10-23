@@ -7,6 +7,8 @@ ci and cd.
 
 - [**dane-verify**](./dane-verify): A specialized tool to monitor a domain's
   DNSSEC and TLSA records
+- [**porkbun-ddns**](./porkbun-ddns): Updates one existing Porkbun A record to
+  the host's public IPv4 address
 - [**hledger**](./hledger): hledger 1.99.5 (2.0 preview) for journal validation
   and reporting in CI
 - [**nvim**](./nvim): Neovim, `lua-language-server`, and `stylua` for
@@ -23,6 +25,7 @@ Each container lives in its own directory with its own `Dockerfile`. To build th
 
 ```bash
 docker build -t dane-verify ./dane-verify
+docker build -t porkbun-ddns ./porkbun-ddns
 docker build --platform linux/amd64 -t hledger ./hledger
 docker build -t nvim ./nvim
 docker build -t ssh ./ssh

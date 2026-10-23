@@ -18,6 +18,7 @@ jobs:
           - containers-hledger
           - containers-nvim
           - containers-playwright
+          - containers-porkbun-ddns
           - containers-ssh
           - containers-wg-verify
           - containers-yq

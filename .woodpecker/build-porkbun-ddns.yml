@@ -1,0 +1,75 @@
+workspace:
+  base: /workspace
+  path: app
+
+when:
+  - event: push
+    branch: main
+    path:
+      include: [".woodpecker/build-porkbun-ddns.yml", "porkbun-ddns/**"]
+  - event: tag
+    ref: "refs/tags/porkbun-ddns/v*.*.*"
+
+steps:
+  test:
+    image: alpine:3.23
+    commands:
+      - apk add --no-cache bash jq shellcheck
+      - shellcheck porkbun-ddns/update.sh porkbun-ddns/tests/update_test.sh
+      - bash porkbun-ddns/tests/update_test.sh
+
+  extract-semver-tags:
+    image: alpine/git:v2.45.2
+    commands:
+      - |
+        VERSION_FULL="${CI_COMMIT_TAG#porkbun-ddns/v}"
+        VERSION_MAJOR=$(echo "$VERSION_FULL" | cut -d. -f1)
+        VERSION_MINOR=$(echo "$VERSION_FULL" | cut -d. -f2)
+
+        echo "Extracted versions: $VERSION_FULL, $VERSION_MAJOR.$VERSION_MINOR, $VERSION_MAJOR"
+        printf '%s\n' "$VERSION_FULL" "$VERSION_MAJOR" "$VERSION_MAJOR.$VERSION_MINOR" > .tags
+    when:
+      - event: tag
+
+  build-docker-main:
+    image: woodpeckerci/plugin-docker-buildx:6.0.3
+    settings:
+      repo: git.eleith.com/eleith.private/porkbun-ddns
+      dockerfile: porkbun-ddns/Dockerfile
+      context: porkbun-ddns
+      dry_run: true
+    when:
+      - event: push
+        branch: main
+
+  build-docker-tag:
+    image: woodpeckerci/plugin-docker-buildx:6.0.3
+    settings:
+      repo: git.eleith.com/eleith.private/porkbun-ddns
+      username: eleith
+      dockerfile: porkbun-ddns/Dockerfile
+      context: porkbun-ddns
+      registry: https://git.eleith.com
+      password:
+        from_secret: gitea_docker_registry
+      tags_file: .tags
+    when:
+      - event: tag
+
+  notify:
+    image: deblan/woodpecker-email:3.3.0
+    settings:
+      dsn:
+        from_secret: woodpecker_email_dsn
+      from:
+        address:
+          from_secret: woodpecker_email_from_address
+        name:
+          from_secret: woodpecker_email_from_name
+      recipients:
+        from_secret: woodpecker_email_recipient
+      recipients_only: true
+    when:
+      - event: push
+        branch: main
+        status: [failure, success]

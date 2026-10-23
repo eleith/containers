@@ -1,0 +1,64 @@
+name: Build and Push porkbun-ddns
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "porkbun-ddns/**"
+      - ".github/workflows/build-porkbun-ddns.yml"
+    tags:
+      - "porkbun-ddns/v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check and test script
+        run: |
+          shellcheck porkbun-ddns/update.sh porkbun-ddns/tests/update_test.sh
+          bash porkbun-ddns/tests/update_test.sh
+
+      - name: Extract tag name
+        id: tag_name
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#porkbun-ddns/v}"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/containers-porkbun-ddns
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.tag_name.outputs.version }},enable=${{ github.ref_type == 'tag' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag_name.outputs.version }},enable=${{ github.ref_type == 'tag' }}
+            type=semver,pattern={{major}},value=${{ steps.tag_name.outputs.version }},enable=${{ github.ref_type == 'tag' }}
+
+      - name: Login to GitHub Container Registry
+        if: github.ref_type == 'tag'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./porkbun-ddns
+          file: ./porkbun-ddns/Dockerfile
+          push: ${{ github.ref_type == 'tag' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
