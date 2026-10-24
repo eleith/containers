@@ -3,6 +3,10 @@ workspace:
   path: app
 
 when:
+  - event: pull_request
+    branch: main
+    path:
+      include: [".woodpecker/build-porkbun-ddns.yml", "porkbun-ddns/**"]
   - event: push
     branch: main
     path:
