@@ -14,11 +14,22 @@ setup() {
     export PING_RESPONSE='{"status":"SUCCESS","yourIp":"203.0.113.10"}'
     export DNS_RESPONSE='{"status":"SUCCESS","records":[{"id":"123","name":"home.example.com","type":"A","content":"198.51.100.20","ttl":"600"}]}'
     export EDIT_RESPONSE='{"status":"SUCCESS"}'
-    export FAIL_STAGE=''
+    export PING_HTTP_STATUS=200 DNS_HTTP_STATUS=200 EDIT_HTTP_STATUS=200
+    export FAIL_STAGE='' FAIL_CREDENTIAL_READ=false
 }
 
+# Simulate unreadable files without relying on the test runner's UID or chmod.
+cat() {
+    if [[ $FAIL_CREDENTIAL_READ == true ]]; then
+        printf 'Mock read failure: test-secret\n' >&2
+        return 1
+    fi
+    command cat "$@"
+}
+export -f cat
+
 # Exported into a fresh Bash process so errexit behaves as it does in production.
-# Only HTTP is mocked; request construction and response parsing use real jq.
+# Request construction and response parsing use real jq.
 curl() {
     local url=${!#} stage
     printf '%s\n' "$@" >> "$CURL_ARGS"
@@ -30,13 +41,13 @@ curl() {
         *) printf 'Unexpected URL: %s\n' "$url" >&2; return 1 ;;
     esac
     if [[ $FAIL_STAGE == "$stage" ]]; then
-        printf 'Mock HTTP failure\n' >&2
-        return 22
+        printf 'Mock transport failure\n' >&2
+        return 28
     fi
     case "$stage" in
-        ping) printf '%s\n' "$PING_RESPONSE" ;;
-        retrieve) printf '%s\n' "$DNS_RESPONSE" ;;
-        edit) printf '%s\n' "$EDIT_RESPONSE" ;;
+        ping) printf '%s\n%s' "$PING_RESPONSE" "$PING_HTTP_STATUS" ;;
+        retrieve) printf '%s\n%s' "$DNS_RESPONSE" "$DNS_HTTP_STATUS" ;;
+        edit) printf '%s\n%s' "$EDIT_RESPONSE" "$EDIT_HTTP_STATUS" ;;
     esac
 }
 export -f curl
@@ -67,6 +78,16 @@ unchanged_record_is_not_written() {
     run_updater example.com home
     [[ $status -eq 0 && $output == 'Unchanged: home.example.com A 203.0.113.10' ]]
     [[ $(jq -s 'length' "$REQUEST_LOG") -eq 2 ]]
+    assert_no_edit
+}
+
+reads_credentials_from_stdin() {
+    CREDENTIALS_FILE=/dev/stdin
+    run_updater --dry-run example.com home \
+        <<< '{"apikey":"test-key","secretapikey":"test-secret"}'
+    [[ $status -eq 0 && $output == 'Dry run: would update home.example.com A 198.51.100.20 -> 203.0.113.10' ]]
+    jq -es 'length == 2 and all(.[];
+        .body == {apikey: "test-key", secretapikey: "test-secret"})' "$REQUEST_LOG" > /dev/null
     assert_no_edit
 }
 
@@ -167,11 +188,37 @@ rejects_invalid_credentials_without_echoing_them() {
     for credentials in '{"apikey":"test-secret"}' \
         '{"apikey":"test-secret","secretapikey":""}' \
         '{"apikey":false,"secretapikey":"test-secret"}' \
-        'test-secret is not JSON' \
+        '["test-secret"]' '"test-secret"' 'null' '' \
         $'{"apikey":"test-secret","secretapikey":"test-secret"}\n{}'; do
         printf '%s\n' "$credentials" > "$CREDENTIALS_FILE"
         run_updater example.com home
-        [[ $status -ne 0 && $output != *test-secret* ]]
+        [[ $status -ne 0 && $output == *'one JSON object with non-empty string fields apikey and secretapikey'* ]]
+        [[ $output != *test-secret* ]]
+    done
+    [[ ! -s $REQUEST_LOG ]]
+}
+
+rejects_invalid_credentials_json() {
+    local credentials
+    for credentials in 'test-secret is not JSON' '{"apikey":"test-secret",}'; do
+        printf '%s\n' "$credentials" > "$CREDENTIALS_FILE"
+        run_updater example.com home
+        [[ $status -ne 0 && $output == *'Invalid JSON in credentials file'* ]]
+        [[ $output != *test-secret* ]]
+    done
+    [[ ! -s $REQUEST_LOG ]]
+}
+
+rejects_whitespace_in_credentials() {
+    local field value
+    for field in apikey secretapikey; do
+        for value in ' test-secret' 'test-secret ' 'test secret' $'test-secret\n' $'test\tsecret'; do
+            jq -n --arg field "$field" --arg value "$value" \
+                '{apikey: "test-key", secretapikey: "test-secret"} | .[$field] = $value' > "$CREDENTIALS_FILE"
+            run_updater --dry-run example.com home
+            [[ $status -ne 0 && $output == *'contains whitespace'* && $output == *'Re-copy the keys'* ]]
+            [[ $output != *test-secret* && $output != *'test secret'* ]]
+        done
     done
     [[ ! -s $REQUEST_LOG ]]
 }
@@ -179,7 +226,23 @@ rejects_invalid_credentials_without_echoing_them() {
 rejects_missing_credentials() {
     rm "$CREDENTIALS_FILE"
     run_updater example.com home
-    [[ $status -ne 0 && $output == *'Expected apikey and secretapikey'* ]]
+    [[ $status -ne 0 && $output == *'Credentials file not found or inaccessible'* && $output == *'bind mount'* ]]
+    [[ ! -s $REQUEST_LOG ]]
+}
+
+rejects_credentials_directories() {
+    rm "$CREDENTIALS_FILE"
+    mkdir "$CREDENTIALS_FILE"
+    run_updater example.com home
+    [[ $status -ne 0 && $output == *'Credentials path is a directory'* ]]
+    [[ ! -s $REQUEST_LOG ]]
+}
+
+reports_credentials_file_read_failures() {
+    FAIL_CREDENTIAL_READ=true
+    run_updater example.com home
+    [[ $status -ne 0 && $output == *'Cannot read credentials file'* && $output == *'--user'* ]]
+    [[ $output == *'UID:GID '* && $output != *test-secret* && $output != *'Invalid JSON'* ]]
     [[ ! -s $REQUEST_LOG ]]
 }
 
@@ -224,7 +287,21 @@ rejects_unexpected_record_fields() {
     assert_no_edit
 }
 
-stops_on_http_failures() {
+validates_ttl_before_unchanged_and_dry_run() {
+    local original=$DNS_RESPONSE
+    DNS_RESPONSE=$(jq '.records[0].ttl = "bad"' <<< "$original")
+    run_updater --dry-run example.com home
+    [[ $status -ne 0 && $output == 'Error: Porkbun returned an invalid record TTL.' ]]
+
+    DNS_RESPONSE=$(jq '.records[0] |= (.ttl = "bad" | .content = "203.0.113.10")' <<< "$original")
+    run_updater example.com home
+    [[ $status -ne 0 && $output == 'Error: Porkbun returned an invalid record TTL.' ]]
+    run_updater --dry-run example.com home
+    [[ $status -ne 0 && $output == 'Error: Porkbun returned an invalid record TTL.' ]]
+    assert_no_edit
+}
+
+stops_on_transport_failures() {
     local stage expected
     expected=0
     for stage in ping retrieve edit; do
@@ -232,25 +309,89 @@ stops_on_http_failures() {
         : > "$REQUEST_LOG"
         FAIL_STAGE=$stage
         run_updater example.com home
-        [[ $status -ne 0 && $output == *'Request failed:'* && $output != *Updated:* ]]
+        [[ $status -ne 0 && $output == *'Network request failed:'* && $output != *Updated:* ]]
+        [[ $output != *'valid IPv4 address'* && $output != *'DNS record list'* ]]
         [[ $(jq -s 'length' "$REQUEST_LOG") -eq $expected ]]
     done
 }
 
-rejects_unsuccessful_or_malformed_api_responses() {
+rejects_unsuccessful_api_responses() {
+    local stage
+    for stage in PING_RESPONSE DNS_RESPONSE EDIT_RESPONSE; do
+        local saved=${!stage}
+        printf -v "$stage" '%s' '{"status":"ERROR","message":"test-secret"}'
+        run_updater example.com home
+        [[ $status -ne 0 && $output == *'Porkbun rejected the request:'* && $output == *'(HTTP 200).'* ]]
+        [[ $output != *test-secret* && $output != *Updated:* && $output != *permissions* ]]
+        printf -v "$stage" '%s' "$saved"
+    done
+}
+
+rejects_malformed_api_responses() {
     local stage response
     for stage in PING_RESPONSE DNS_RESPONSE EDIT_RESPONSE; do
         local saved=${!stage}
-        for response in '{"status":"ERROR","message":"test-secret"}' \
-            'not JSON: test-secret' \
+        for response in 'not JSON: test-secret' '{"message":"test-secret"}' \
             $'{"status":"SUCCESS"}\n{"status":"SUCCESS"}'; do
             printf -v "$stage" '%s' "$response"
             run_updater example.com home
-            [[ $status -ne 0 && $output == *'Unsuccessful or malformed API response:'* ]]
+            [[ $status -ne 0 && $output == *'Malformed API response:'* ]]
             [[ $output != *test-secret* && $output != *Updated:* ]]
         done
         printf -v "$stage" '%s' "$saved"
     done
+}
+
+reports_rejected_api_credentials() {
+    local response
+    PING_HTTP_STATUS=400
+    for response in '{"status":"ERROR","message":"Invalid API key: test-secret"}' \
+        '{"status":"ERROR","message":"Invalid secret API key: test-secret"}'; do
+        : > "$REQUEST_LOG"
+        PING_RESPONSE=$response
+        run_updater --dry-run example.com home
+        [[ $status -ne 0 && $output == *'Porkbun rejected the API credentials:'* && $output == *'HTTP 400'* ]]
+        [[ $output == *'matching, valid pair'* && $output != *test-secret* ]]
+        [[ $(jq -s 'length' "$REQUEST_LOG") -eq 1 ]]
+        assert_no_edit
+    done
+    PING_HTTP_STATUS=200
+    PING_RESPONSE='{"status":"SUCCESS","credentialsValid":false,"yourIp":"203.0.113.10"}'
+    run_updater example.com home
+    [[ $status -ne 0 && $output == *'Porkbun rejected the API credentials:'* ]]
+    assert_no_edit
+}
+
+reports_unauthorized_http_responses() {
+    local stage
+    for stage in PING_HTTP_STATUS DNS_HTTP_STATUS EDIT_HTTP_STATUS; do
+        printf -v "$stage" '%s' 401
+        run_updater example.com home
+        [[ $status -ne 0 && $output == *'Porkbun rejected the API credentials:'* && $output == *'HTTP 401'* ]]
+        [[ $output != *Updated:* ]]
+        printf -v "$stage" '%s' 200
+    done
+}
+
+reports_domain_api_access_denied() {
+    DNS_HTTP_STATUS=403
+    DNS_RESPONSE='{"status":"ERROR","message":"test-secret"}'
+    run_updater example.com home
+    [[ $status -ne 0 && $output == *'Porkbun denied API access:'* && $output == *'HTTP 403'* ]]
+    [[ $output == *"domain's API Access"* && $output == *"key's permissions"* && $output != *test-secret* ]]
+    assert_no_edit
+}
+
+reports_other_http_errors_without_raw_responses() {
+    local http_status
+    for http_status in 400 429 500 502; do
+        PING_HTTP_STATUS=$http_status
+        PING_RESPONSE='test-secret error page'
+        run_updater example.com home
+        [[ $status -ne 0 && $output == *"Porkbun request failed: /ping (HTTP $http_status)"* ]]
+        [[ $output != *test-secret* && $output != *'API credentials'* ]]
+    done
+    assert_no_edit
 }
 
 keeps_credentials_out_of_arguments_and_logs() {
@@ -270,7 +411,7 @@ uses_bounded_requests_without_redirects() {
     [[ $status -eq 0 ]]
     grep -Fxq -- '--connect-timeout' "$CURL_ARGS"
     grep -Fxq -- '--max-time' "$CURL_ARGS"
-    grep -Fxq -- '--fail' "$CURL_ARGS"
+    grep -Fxq -- '--write-out' "$CURL_ARGS"
     grep -Fxq -- '@-' "$CURL_ARGS"
     if grep -Eq -- '^(-L|--location)$' "$CURL_ARGS"; then
         return 1
@@ -287,6 +428,7 @@ reports_test_failure_location() {
 TESTS=(
     updates_one_record_and_preserves_ttl
     unchanged_record_is_not_written
+    reads_credentials_from_stdin
     dry_run_reports_change_without_writing
     dry_run_reports_unchanged_records
     dry_run_supports_the_zone_apex
@@ -297,12 +439,22 @@ TESTS=(
     refuses_multiple_records
     rejects_invalid_arguments_before_network_access
     rejects_invalid_credentials_without_echoing_them
+    rejects_invalid_credentials_json
+    rejects_whitespace_in_credentials
     rejects_missing_credentials
+    rejects_credentials_directories
+    reports_credentials_file_read_failures
     rejects_invalid_public_addresses
     rejects_invalid_record_lists
     rejects_unexpected_record_fields
-    stops_on_http_failures
-    rejects_unsuccessful_or_malformed_api_responses
+    validates_ttl_before_unchanged_and_dry_run
+    stops_on_transport_failures
+    rejects_unsuccessful_api_responses
+    rejects_malformed_api_responses
+    reports_rejected_api_credentials
+    reports_unauthorized_http_responses
+    reports_domain_api_access_denied
+    reports_other_http_errors_without_raw_responses
     keeps_credentials_out_of_arguments_and_logs
     uses_bounded_requests_without_redirects
     reports_test_failure_location

@@ -1,7 +1,6 @@
 # 🐷 Porkbun DDNS
 
 Updates one existing Porkbun A record to the host's public IPv4 address.
-Runs once and exits; scheduling is handled externally.
 
 ## 🛠 Usage
 
@@ -21,10 +20,8 @@ Mount the file read-only to update `home.example.com`:
 docker run --rm \
   --user "$(id -u):$(id -g)" \
   --mount type=bind,src=/path/to/porkbun.json,dst=/run/secrets/porkbun.json,readonly \
-  ghcr.io/eleith/containers-porkbun-ddns:1.0.0 example.com home
+  ghcr.io/eleith/containers-porkbun-ddns example.com home
 ```
-
-`--user` lets the container read a credentials file protected for your host user.
 
 ### Arguments
 
@@ -33,20 +30,13 @@ docker run --rm \
 | `--dry-run` | Optional; place before the domain to report changes without updating DNS. Still calls Porkbun to check the IP and record. |
 | `domain` | Porkbun zone, such as `example.com` or `example.co.uk`. |
 | `name` | Relative record name, such as `home` or `services.home`; use `""` for the zone apex. |
+| `--user` | lets the container read a credentials file protected for your host user. Without it, the image runs as UID/GID `65534:65534` |
 
-Requires exactly one existing A record; never creates records. Skips unchanged
-addresses and preserves the TTL. Errors exit nonzero. Use ASCII/punycode names
-without trailing dots; wildcard names are not supported.
-
-## 🏷 Tags
-
-Release tags use `porkbun-ddns/vX.Y.Z` and publish `X`, `X.Y`, and `X.Y.Z`.
-Pin a full version or digest; there is no `latest`. Pushes to `main` build and
-test without publishing.
+Requires exactly one existing A record;
 
 ## ✅ Tests
 
-Local checks use mocked HTTP calls; no real credentials are needed:
+Local checks use mocked HTTP calls
 
 ```bash
 shellcheck porkbun-ddns/update.sh porkbun-ddns/tests/update_test.sh
