@@ -3,6 +3,10 @@ workspace:
   path: app
 
 when:
+  - event: pull_request
+    branch: main
+    path:
+      include: [".woodpecker/build-dane-verify.yml", "dane-verify/**"]
   - event: push
     branch: main
     path:

@@ -37,12 +37,13 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/containers-hledger
           flavor: latest=false
           tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=semver,pattern={{version}},value=${{ steps.tag_name.outputs.version }},enable=${{ github.ref_type == 'tag' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag_name.outputs.version }},enable=${{ github.ref_type == 'tag' }}
             type=semver,pattern={{major}},value=${{ steps.tag_name.outputs.version }},enable=${{ github.ref_type == 'tag' }}
 
       - name: Login to GitHub Container Registry
-        if: github.ref_type == 'tag'
+        if: github.ref == 'refs/heads/main' || github.ref_type == 'tag'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -55,6 +56,6 @@ jobs:
           context: ./hledger
           file: ./hledger/Dockerfile
           platforms: linux/amd64
-          push: ${{ github.ref_type == 'tag' }}
+          push: ${{ github.ref == 'refs/heads/main' || github.ref_type == 'tag' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

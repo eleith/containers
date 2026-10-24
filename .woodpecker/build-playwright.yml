@@ -36,9 +36,13 @@ steps:
     image: woodpeckerci/plugin-docker-buildx:6.0.3
     settings:
       repo: git.eleith.com/eleith.private/playwright
+      username: eleith
       dockerfile: playwright/Dockerfile
       context: playwright
-      dry_run: true
+      registry: https://git.eleith.com
+      password:
+        from_secret: gitea_docker_registry
+      tags: latest
     when:
       - event: push
         branch: main

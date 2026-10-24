@@ -52,11 +52,7 @@ The private registry image is `git.eleith.com/eleith.private/hledger:1.99.5`.
 
 Release tags use `hledger/vX.Y.Z`, matching the packaged hledger version.
 For example, `hledger/v1.99.5` publishes `1`, `1.99`, and `1.99.5`.
-There is no extra tool-prefixed tag and no `latest`; pin the full version tag
-or image digest for CI.
-
-Pushes to `main` build without publishing. Release tags publish via
-GitHub Actions and Woodpecker, like `nvim`.
+See [Releases](../docs/releases.md) for `latest` and publishing.
 
 ## ⚙️ Build
 

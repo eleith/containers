@@ -3,7 +3,7 @@
 This repo is a collection of small, focused Docker containers for use in crons,
 ci and cd.
 
-## 🛠 What's inside?
+## 🧰 What's inside?
 
 - [**dane-verify**](./dane-verify): A specialized tool to monitor a domain's
   DNSSEC and TLSA records
@@ -19,16 +19,9 @@ ci and cd.
 - [**yq**](./yq): A lightweight image with Mike Farah's `yq` and `bash`
 - [**playwright**](./playwright): playwright + node 26 + Temporal
 
-## 🚀 Quick Start
+## 📚 Docs
 
-Each container lives in its own directory with its own `Dockerfile`. To build them:
-
-```bash
-docker build -t dane-verify ./dane-verify
-docker build -t porkbun-ddns ./porkbun-ddns
-docker build --platform linux/amd64 -t hledger ./hledger
-docker build -t nvim ./nvim
-docker build -t ssh ./ssh
-docker build -t wg-verify ./wg-verify
-docker build -t yq ./yq
-```
+- [Building](docs/building.md)
+- [Testing](docs/testing.md)
+- [Releases](docs/releases.md)
+- [Secrets](docs/secrets.md)

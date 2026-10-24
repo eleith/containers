@@ -55,9 +55,8 @@ descriptive one naming what is inside:
 1  1.0  1.0.0  1.61.1-node26
 ```
 
-The descriptive tag is derived from this `Dockerfile` at build time, so it cannot drift.
-There is **no `latest`** — pin `1.61.1-node26` (or a semver tag) so a Playwright or Node
-bump can never arrive unannounced. Pushes to `main` build the image without publishing it.
+The descriptive tag comes from the Dockerfile.
+See [Releases](../docs/releases.md) for `latest` and publishing.
 
 ## ⚠️ Version pairing
 

@@ -87,10 +87,8 @@ descriptive one naming what is inside:
 1  1.0  1.0.0  0.12.1-luals3.19.1-stylua2.5.2
 ```
 
-The descriptive tag is derived from this `Dockerfile`'s build args at build
-time, so it cannot drift. There is **no `latest`**: pin the descriptive tag (or
-a semver tag) so a tool bump can never arrive unannounced. Pushes to `main`
-build the image without publishing it.
+The descriptive tag comes from the Dockerfile's build args.
+See [Releases](../docs/releases.md) for `latest` and publishing.
 
 ## ⚙️ Build Args
 
